@@ -1,7 +1,11 @@
 [build]
   publish = "."
-  command = "echo 'No build needed'"
+  command = "echo 'Building with secure Azure Maps key...'"
 
+[context.production]
+  environment = { AZURE_MAPS_KEY = "@azure_maps_key" }
+
+# Add redirects if needed
 [[redirects]]
   from = "/*"
   to = "/index.html"
