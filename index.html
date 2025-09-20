@@ -63,13 +63,17 @@
 
   <script src="https://atlas.microsoft.com/sdk/javascript/mapcontrol/2/atlas.min.js"></script>
   <script>
-    const AZURE_MAPS_KEY = (() => {
-  // Try getting from Netlify environment variables first
-  if (typeof process !== 'undefined' && process.env.AZURE_MAPS_KEY) {
-    return process.env.AZURE_MAPS_KEY;
-  }
-  // Fallback to empty string (will show error)
-  return '';
+// Replace your Azure Maps key initialization with this:
+const AZURE_MAPS_KEY = (function() {
+  // This will be replaced by Netlify during build
+  return 'NETLIFY_AZURE_MAPS_KEY';
+})();
+
+if (!AZURE_MAPS_KEY || AZURE_MAPS_KEY === 'NETLIFY_AZURE_MAPS_KEY') {
+  document.getElementById('errorText').textContent = 
+    'Azure Maps key not configured. Please set AZURE_MAPS_KEY environment variable in Netlify.';
+  document.getElementById('errorMessage').classList.remove('hidden');
+}
 })();
 
 if (!AZURE_MAPS_KEY) {
