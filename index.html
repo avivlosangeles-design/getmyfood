@@ -65,7 +65,13 @@
   <script>
     // SECURE KEY INJECTION - Will be replaced by Netlify during build
     const AZURE_MAPS_KEY = 'NETLIFY_AZURE_MAPS_KEY';
+console.log("Key existence check:", {
+  hasKey: !!AZURE_MAPS_KEY,
+  keyLength: AZURE_MAPS_KEY?.length,
+  firstChars: AZURE_MAPS_KEY?.substring(0, 4) + '...'
+});
 
+if (!AZURE_MAPS_KEY || AZURE_MAPS_KEY === 'NETLIFY_AZURE_MAPS_KEY')
     // Error handling if key wasn't replaced
     if (!AZURE_MAPS_KEY || AZURE_MAPS_KEY === 'NETLIFY_AZURE_MAPS_KEY') {
       document.getElementById('errorText').textContent = 
