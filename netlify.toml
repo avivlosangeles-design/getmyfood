@@ -1,6 +1,13 @@
 [build]
-  publish = "."
+   publish = "."
   command = '''
+    echo "Starting build..."
+    echo "Key length: ${#AZURE_MAPS_KEY}"
+    cp index.html index.html.original
+    sed -i "s|NETLIFY_AZURE_MAPS_KEY|${AZURE_MAPS_KEY}|g" index.html
+    echo "Diff after substitution:"
+    diff -u index.html.original index.html | head -n 10
+    echo "Build complete"
     # Install required tools for substitution
     if ! command -v sed &> /dev/null; then
       echo "Error: sed is required but not installed" >&2
