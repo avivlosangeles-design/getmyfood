@@ -1,5 +1,9 @@
 [build]
    publish = "."
+   functions = "netlify/functions"
+[functions]
+  node_bundler = "esbuild"
+  
   command = '''
     echo "Starting build..."
     echo "Key length: ${#AZURE_MAPS_KEY}"
