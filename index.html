@@ -63,54 +63,64 @@
 
   <script src="https://atlas.microsoft.com/sdk/javascript/mapcontrol/2/atlas.min.js"></script>
   <script>
-    // SECURE KEY INJECTION - Will be replaced by Netlify during build
-    const AZURE_MAPS_KEY = 'NETLIFY_AZURE_MAPS_KEY';
-console.log("Key existence check:", {
-  hasKey: !!AZURE_MAPS_KEY,
-  keyLength: AZURE_MAPS_KEY?.length,
-  firstChars: AZURE_MAPS_KEY?.substring(0, 4) + '...'
-});
+    // Global map variables
+    let map, popup, datasource;
+    let currentPage = 1, totalPages = 1, lastSearchTerm = '', lastLocation = '';
 
-if (!AZURE_MAPS_KEY || AZURE_MAPS_KEY === 'NETLIFY_AZURE_MAPS_KEY')
-    // Error handling if key wasn't replaced
-    if (!AZURE_MAPS_KEY || AZURE_MAPS_KEY === 'NETLIFY_AZURE_MAPS_KEY') {
-      document.getElementById('errorText').textContent = 
-        'Azure Maps key not configured. Please set AZURE_MAPS_KEY environment variable in Netlify.';
-      document.getElementById('errorMessage').classList.remove('hidden');
-    } else {
-      // Initialize map only if key is available
-      let map, popup, datasource;
-      
-      function initMap() {
-        map = new atlas.Map('map', { 
-          authOptions: { 
-            authType: 'subscriptionKey', 
-            subscriptionKey: AZURE_MAPS_KEY 
-          } 
-        });
+    // Secure key fetching via Netlify Function
+    async function getAzureMapsKey() {
+      try {
+        const response = await fetch('/.netlify/functions/get-map-key');
+        if (!response.ok) throw new Error('Failed to fetch key');
+        const key = await response.text();
         
-        // Rest of your map initialization code...
+        // Basic validation
+        if (!key || key.length !== 32) {
+          throw new Error('Invalid key format');
+        }
+        return key;
+      } catch (error) {
+        console.error('Key fetch error:', error);
+        showError('Failed to load map services. Please try again later.');
+        return null;
+      }
+    }
+
+    // Initialize application
+    async function initApp() {
+      const AZURE_MAPS_KEY = await getAzureMapsKey();
+      if (!AZURE_MAPS_KEY) return;
+
+      try {
+        // Initialize map
+        map = new atlas.Map('map', {
+          authOptions: {
+            authType: 'subscriptionKey',
+            subscriptionKey: AZURE_MAPS_KEY
+          }
+        });
+
+        // Add map controls
         map.controls.add([
           new atlas.control.ZoomControl(),
-          new atlas.control.CompassControl(),
-          new atlas.control.StyleControl()
+          new atlas.control.CompassControl()
         ], { position: 'top-right' });
 
+        // Initialize other map components
         popup = new atlas.Popup();
         datasource = new atlas.source.DataSource();
         map.sources.add(datasource);
         map.layers.add(new atlas.layer.SymbolLayer(datasource));
         
+        // Show map
         document.getElementById('map').classList.remove('hidden');
+      } catch (error) {
+        console.error('Map initialization error:', error);
+        showError('Failed to initialize map. Please refresh the page.');
       }
-
-      // Initialize the map when the page loads
-      window.addEventListener('DOMContentLoaded', initMap);
     }
 
-    // Rest of your application code...
-    let currentPage = 1, totalPages = 1, lastSearchTerm = '', lastLocation = '';
-
+    // Event listeners
     document.getElementById('searchForm').addEventListener('submit', async function(e) {
       e.preventDefault();
       const foodType = document.getElementById('foodType').value.trim();
@@ -142,12 +152,16 @@ if (!AZURE_MAPS_KEY || AZURE_MAPS_KEY === 'NETLIFY_AZURE_MAPS_KEY')
 
     async function searchRestaurants(term, location, page = 1) {
       // Your existing search implementation...
+      // This will now have access to the initialized map
     }
 
     function showError(message) {
       document.getElementById('errorText').textContent = message;
       document.getElementById('errorMessage').classList.remove('hidden');
     }
+
+    // Start the application
+    document.addEventListener('DOMContentLoaded', initApp);
   </script>
 </body>
 </html>
