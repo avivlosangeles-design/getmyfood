@@ -61,107 +61,83 @@
     </div>
   </div>
 
-  <script src="https://atlas.microsoft.com/sdk/javascript/mapcontrol/2/atlas.min.js"></script>
   <script>
-    // Global map variables
-    let map, popup, datasource;
-    let currentPage = 1, totalPages = 1, lastSearchTerm = '', lastLocation = '';
+// Global state
+let AZURE_MAPS_KEY = null;
+let mapInitialized = false;
 
-    // Secure key fetching via Netlify Function
-    async function getAzureMapsKey() {
-      try {
-        const response = await fetch('/.netlify/functions/get-map-key');
-        if (!response.ok) throw new Error('Failed to fetch key');
-        const key = await response.text();
-        
-        // Basic validation
-        if (!key || key.length !== 32) {
-          throw new Error('Invalid key format');
-        }
+// Enhanced key fetcher with retries
+async function fetchAzureKey() {
+  const MAX_RETRIES = 3;
+  
+  for (let i = 0; i < MAX_RETRIES; i++) {
+    try {
+      const response = await fetch('/.netlify/functions/get-map-key?_=' + Date.now());
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      
+      const key = await response.text();
+      
+      // Validate key format (Azure keys are usually 32 chars)
+      if (key && key.length === 32) {
         return key;
-      } catch (error) {
-        console.error('Key fetch error:', error);
-        showError('Failed to load map services. Please try again later.');
-        return null;
       }
+      throw new Error('Invalid key format');
+      
+    } catch (error) {
+      console.error(`Attempt ${i+1} failed:`, error);
+      if (i === MAX_RETRIES - 1) throw error;
+      await new Promise(resolve => setTimeout(resolve, 1000 * (i+1))); // Wait before retry
     }
+  }
+}
 
-    // Initialize application
-    async function initApp() {
-      const AZURE_MAPS_KEY = await getAzureMapsKey();
-      if (!AZURE_MAPS_KEY) return;
-
-      try {
-        // Initialize map
-        map = new atlas.Map('map', {
-          authOptions: {
-            authType: 'subscriptionKey',
-            subscriptionKey: AZURE_MAPS_KEY
-          }
-        });
-
-        // Add map controls
-        map.controls.add([
-          new atlas.control.ZoomControl(),
-          new atlas.control.CompassControl()
-        ], { position: 'top-right' });
-
-        // Initialize other map components
-        popup = new atlas.Popup();
-        datasource = new atlas.source.DataSource();
-        map.sources.add(datasource);
-        map.layers.add(new atlas.layer.SymbolLayer(datasource));
-        
-        // Show map
-        document.getElementById('map').classList.remove('hidden');
-      } catch (error) {
-        console.error('Map initialization error:', error);
-        showError('Failed to initialize map. Please refresh the page.');
-      }
-    }
-
-    // Event listeners
-    document.getElementById('searchForm').addEventListener('submit', async function(e) {
-      e.preventDefault();
-      const foodType = document.getElementById('foodType').value.trim();
-      const location = document.getElementById('location').value.trim();
-
-      if (!foodType || !location) {
-        showError('Please enter both food type and location');
-        return;
-      }
-
-      // Show loading state
-      document.getElementById('searchText').textContent = 'Searching...';
-      document.getElementById('searchSpinner').classList.remove('hidden');
-      document.getElementById('errorMessage').classList.add('hidden');
-
-      try {
-        lastSearchTerm = foodType;
-        lastLocation = location;
-        currentPage = 1;
-        await searchRestaurants(foodType, location, currentPage);
-      } catch (error) {
-        showError('Failed to fetch restaurants. Please try again later.');
-        console.error('Search error:', error);
-      } finally {
-        document.getElementById('searchText').textContent = 'Search';
-        document.getElementById('searchSpinner').classList.add('hidden');
+// Initialize application
+async function initApp() {
+  try {
+    // Show loading state
+    document.getElementById('searchText').textContent = 'Loading...';
+    document.getElementById('searchSpinner').classList.remove('hidden');
+    
+    // 1. Fetch the key
+    AZURE_MAPS_KEY = await fetchAzureKey();
+    
+    // 2. Initialize map
+    const map = new atlas.Map('map', {
+      authOptions: {
+        authType: 'subscriptionKey',
+        subscriptionKey: AZURE_MAPS_KEY
       }
     });
+    
+    // 3. Set up map controls
+    map.controls.add([
+      new atlas.control.ZoomControl(),
+      new atlas.control.CompassControl()
+    ], { position: 'top-right' });
+    
+    // 4. Show UI
+    document.getElementById('map').classList.remove('hidden');
+    document.getElementById('searchText').textContent = 'Search';
+    document.getElementById('searchSpinner').classList.add('hidden');
+    document.getElementById('errorMessage').classList.add('hidden');
+    
+    mapInitialized = true;
+    
+  } catch (error) {
+    console.error('Initialization failed:', error);
+    document.getElementById('errorText').textContent = 
+      'Failed to load map services. Please refresh or try again later.';
+    document.getElementById('errorMessage').classList.remove('hidden');
+    document.getElementById('searchText').textContent = 'Search';
+    document.getElementById('searchSpinner').classList.add('hidden');
+  }
+}
 
-    async function searchRestaurants(term, location, page = 1) {
-      // Your existing search implementation...
-      // This will now have access to the initialized map
-    }
-
-    function showError(message) {
-      document.getElementById('errorText').textContent = message;
-      document.getElementById('errorMessage').classList.remove('hidden');
-    }
-
-    // Start the application
-    document.addEventListener('DOMContentLoaded', initApp);
-  </script>
+// Start the app
+document.addEventListener('DOMContentLoaded', initApp);
+</script>
 </body>
 </html>
