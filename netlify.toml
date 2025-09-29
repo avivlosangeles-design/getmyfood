@@ -1,43 +1,23 @@
-[build]
-   publish = "."
-   functions = "netlify/functions"
-[functions]
-  node_bundler = "esbuild"
+exports.handler = async (event, context) => {
+  // Debug: Log environment variables
+  console.log('Env vars:', Object.keys(process.env));
   
-  command = '''
-    echo "Starting build..."
-    echo "Key length: ${#AZURE_MAPS_KEY}"
-    cp index.html index.html.original
-    sed -i "s|NETLIFY_AZURE_MAPS_KEY|${AZURE_MAPS_KEY}|g" index.html
-    echo "Diff after substitution:"
-    diff -u index.html.original index.html | head -n 10
-    echo "Build complete"
-    # Install required tools for substitution
-    if ! command -v sed &> /dev/null; then
-      echo "Error: sed is required but not installed" >&2
-      exit 1
-    fi
+  const key = process.env.AZURE_MAPS_KEY;
+  
+  if (!key) {
+    return {
+      statusCode: 500,
+      body: JSON.stringify({ error: "AZURE_MAPS_KEY not found in environment" }),
+      headers: { 'Content-Type': 'application/json' }
+    };
+  }
 
-    # Create backup of original file
-    cp index.html index.html.bak
-
-    # Perform environment variable substitution
-    if sed -i.bak "s|NETLIFY_AZURE_MAPS_KEY|${AZURE_MAPS_KEY}|g" index.html; then
-      echo "Successfully injected Azure Maps key"
-      rm index.html.bak
-    else
-      echo "Error injecting environment variables" >&2
-      mv index.html.bak index.html
-      exit 1
-    fi
-
-    echo "Build completed successfully"
-  '''
-
-[context.production.environment]
-  AZURE_MAPS_KEY = "@azure_maps_key"
-
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
+  return {
+    statusCode: 200,
+    body: key,
+    headers: { 
+      'Content-Type': 'text/plain',
+      'Cache-Control': 'no-store' // Prevent caching
+    }
+  };
+};
